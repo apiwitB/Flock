@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "Attribute": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "confidence"
+      ],
+      "title": "Attribute",
+      "type": "object"
+    },
+    "Images": {
+      "additionalProperties": false,
+      "properties": {
+        "crop_path": {
+          "minLength": 1,
+          "title": "Crop Path",
+          "type": "string"
+        },
+        "context_path": {
+          "minLength": 1,
+          "title": "Context Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "crop_path",
+        "context_path"
+      ],
+      "title": "Images",
+      "type": "object"
+    },
+    "Plate": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 16,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "province": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Province"
+        },
+        "province_confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Province Confidence"
+        }
+      },
+      "required": [
+        "text",
+        "confidence"
+      ],
+      "title": "Plate",
+      "type": "object"
+    },
+    "SubjectType": {
+      "enum": [
+        "vehicle"
+      ],
+      "title": "SubjectType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "sighting_id": {
+      "format": "uuid",
+      "title": "Sighting Id",
+      "type": "string"
+    },
+    "camera_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+      "title": "Camera Id",
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "subject_type": {
+      "$ref": "#/$defs/SubjectType"
+    },
+    "track_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$",
+      "title": "Track Id",
+      "type": "string"
+    },
+    "plate": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Plate"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "attributes": {
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+          "$ref": "#/$defs/Attribute"
+        }
+      },
+      "title": "Attributes",
+      "type": "object"
+    },
+    "embedding": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Embedding"
+    },
+    "embedding_model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Embedding Model"
+    },
+    "images": {
+      "$ref": "#/$defs/Images"
+    },
+    "reader_versions": {
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9_.\\-]{0,63}$": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "title": "Reader Versions",
+      "type": "object"
+    }
+  },
+  "required": [
+    "sighting_id",
+    "camera_id",
+    "observed_at",
+    "subject_type",
+    "track_id",
+    "images",
+    "reader_versions"
+  ],
+  "title": "SightingEvent",
+  "type": "object"
+}

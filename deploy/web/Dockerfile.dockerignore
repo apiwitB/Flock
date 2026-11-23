@@ -1,0 +1,8 @@
+# ใช้กับ deploy/web/Dockerfile เท่านั้น (BuildKit อ่านไฟล์ <Dockerfile>.dockerignore แทน .dockerignore ที่ root)
+# ส่งเฉพาะ web/ และ Caddyfile เข้า build context
+*
+!web
+!deploy/web/Caddyfile
+web/node_modules
+web/dist
+web/.env*

@@ -1,0 +1,38 @@
+# เทสต์ integration บนฐานข้อมูลและคิวแยกต่างหาก (project "flock-test" มี volume ของตัวเอง)
+#   docker compose -p flock-test -f docker-compose.yml -f docker-compose.test.yml run --rm --build tests
+#   docker compose -p flock-test -f docker-compose.yml -f docker-compose.test.yml down -v
+
+services:
+  db:
+    ports: !reset []
+  queue:
+    ports: !reset []
+  writer:
+    profiles: [never]   # เทสต์ควบคุม writer เอง
+  api:
+    profiles: [never]
+  linker:
+    profiles: [never]
+  web:
+    profiles: [never]
+  tests:
+    volumes:
+      - ./:/app/deploy:ro   # ให้เทสต์โหลด topology.example.toml ได้
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+      args:
+        EXTRAS: "[test]"
+    user: root
+    working_dir: /app/api
+    command: ["pytest", "-q", "-p", "no:cacheprovider", "tests"]
+    environment:
+      FLOCK_DATABASE_URL: postgresql://flock_app:${FLOCK_APP_PASSWORD}@db:5432/flock
+      FLOCK_OWNER_DATABASE_URL: postgresql://flock_owner:${FLOCK_OWNER_PASSWORD}@db:5432/flock
+      FLOCK_QUEUE_URL: redis://:${FLOCK_QUEUE_PASSWORD}@queue:6379/0
+      FLOCK_IMAGE_ROOT: /tmp/images
+      FLOCK_COOKIE_SECURE: "false"
+      FLOCK_WRITER_NAME: test-writer
+    depends_on:
+      db: { condition: service_healthy }
+      queue: { condition: service_healthy }

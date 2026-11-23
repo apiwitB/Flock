@@ -1,0 +1,22 @@
+# ความลับ
+.env
+deploy/.env
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# ข้อมูลกล้องและผลเทรน (ข้อมูลส่วนบุคคล ห้าม commit)
+clips/
+frames/
+datasets/
+runs/
+*.mp4
+*.onnx
+*.engine
+*.pt
+
+# ผู้ใช้ทดลองบนเครื่องพัฒนา
+dev-users.local

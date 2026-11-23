@@ -1,0 +1,121 @@
+# ฐานข้อมูลและคิวสำหรับพัฒนา (ยังไม่มีส่วน GPU)
+#   cp .env.example .env   แล้วใส่รหัสผ่าน
+#   docker compose up -d --build      แล้วเปิด http://127.0.0.1:8080
+# พอร์ตผูกไว้ที่ 127.0.0.1 เท่านั้น ไม่เปิดให้เครื่องอื่นในเครือข่ายเข้าถึง
+
+name: flock
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: flock
+      POSTGRES_USER: flock_owner
+      POSTGRES_PASSWORD: ${FLOCK_OWNER_PASSWORD:?set in .env}
+      FLOCK_APP_PASSWORD: ${FLOCK_APP_PASSWORD:?set in .env}
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+      - ./db/tests:/tests:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flock_owner -d flock"]
+      interval: 5s
+      retries: 20
+
+  queue:
+    # Valkey: fork ของ Redis ใบอนุญาต BSD ใช้คำสั่งเดียวกัน (รวม Streams)
+    image: valkey/valkey:8
+    command: ["valkey-server", "--appendonly", "yes", "--requirepass", "${FLOCK_QUEUE_PASSWORD:?set in .env}"]
+    volumes:
+      - queue-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "valkey-cli -a \"$$FLOCK_QUEUE_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 5s
+      retries: 20
+    environment:
+      FLOCK_QUEUE_PASSWORD: ${FLOCK_QUEUE_PASSWORD}
+
+  writer:
+    build: &app-build
+      context: ..
+      dockerfile: api/Dockerfile
+    command: ["flock-writer"]
+    environment: &app-env
+      FLOCK_DATABASE_URL: postgresql://flock_app:${FLOCK_APP_PASSWORD}@db:5432/flock
+      FLOCK_QUEUE_URL: redis://:${FLOCK_QUEUE_PASSWORD}@queue:6379/0
+      FLOCK_IMAGE_ROOT: /data/images
+      FLOCK_WRITER_NAME: writer-1
+    volumes:
+      - images:/data/images:ro
+    depends_on: &app-deps
+      db: { condition: service_healthy }
+      queue: { condition: service_healthy }
+    restart: unless-stopped
+
+  linker:
+    build: *app-build
+    command: ["flock-linker"]
+    environment:
+      <<: *app-env
+      FLOCK_TOPOLOGY: /etc/flock/topology.toml
+    volumes:
+      # ตอนพัฒนาใช้ผังตัวอย่าง เครื่องจริงให้สร้าง topology.toml แล้วเปลี่ยนบรรทัดนี้
+      - ./topology.example.toml:/etc/flock/topology.toml:ro
+    depends_on: *app-deps
+    restart: unless-stopped
+
+  api:
+    build: *app-build
+    # หลัง Caddy: เชื่อ X-Forwarded-For เฉพาะเมื่อ request มาจาก IP ของ Caddy (service web) เท่านั้น
+    # IP นี้ต้องตรงกับ ipv4_address ของ web ในเครือข่าย edge ด้านล่าง
+    # request ที่ยิงตรงเข้า 127.0.0.1:8000 ไม่ได้มาจาก IP นี้ จึงปลอม X-Forwarded-For ไม่ได้
+    command: ["uvicorn", "flock_api.app:app", "--host", "0.0.0.0", "--port", "8000",
+              "--proxy-headers", "--forwarded-allow-ips", "172.31.250.10"]
+    environment:
+      <<: *app-env
+      # ตอนพัฒนาเข้าผ่าน http (Caddy :8080 หรือ 127.0.0.1:8000) จึงปิด Secure cookie ไว้
+      # เครื่องจริงเปิด HTTPS ที่ Caddy แล้วต้องลบบรรทัดนี้ (ค่าเริ่มคือ true) ดู deploy/web/Caddyfile
+      FLOCK_COOKIE_SECURE: "false"
+    volumes:
+      - images:/data/images:ro
+    ports:
+      # เฉพาะตอนพัฒนา (เช่น Vite dev server proxy มาที่นี่ และ /docs) เครื่องจริงให้ลบ ให้เข้าผ่าน Caddy อย่างเดียว
+      - "127.0.0.1:8000:8000"
+    networks: [default, edge]
+    depends_on: *app-deps
+    restart: unless-stopped
+
+  web:
+    # Caddy: เสิร์ฟหน้าเว็บ (web/dist) และ reverse proxy ไป api ดู web/Caddyfile
+    build:
+      context: ..
+      dockerfile: deploy/web/Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    networks:
+      edge:
+        ipv4_address: 172.31.250.10   # api เชื่อ X-Forwarded-For จาก IP นี้เท่านั้น
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api]
+    restart: unless-stopped
+
+networks:
+  # เครือข่ายระหว่าง Caddy กับ api เท่านั้น กำหนด subnet เพื่อให้ IP ของ Caddy คงที่
+  edge:
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
+
+volumes:
+  db-data:
+  queue-data:
+  images:
+  caddy-data:     # ใบรับรอง/คีย์ของ Caddy (เมื่อเปิด HTTPS)
+  caddy-config:

@@ -1,0 +1,19 @@
+[project]
+name = "flock-contracts"
+version = "0.1.0"
+description = "Sighting event schema and shared plate/province helpers"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.7,<3"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flock_contracts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

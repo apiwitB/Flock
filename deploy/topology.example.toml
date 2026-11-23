@@ -1,0 +1,44 @@
+# ผังกล้องของอาคาร: Linker ใช้ตัดสินว่ารถเดินทางจากกล้องหนึ่งไปอีกกล้องได้ทันเวลาหรือไม่
+# คัดลอกเป็น topology.toml แล้วแก้ตามอาคารจริง (ชื่อกล้องต้องตรงกับ camera_id ในตาราง cameras)
+
+[linker]
+# ป้ายต่างกันได้ไม่เกินเท่านี้จึงนับเป็น "ป้ายคล้าย" (ตัวที่หน้าตาคล้ายกันนับ 0.4, ตัวอื่นนับ 1)
+similar_max_distance = 1.0
+# "เดา" ด้วย embedding: ความคล้ายขั้นต่ำ และต้องห่างจากคันที่คล้ายรองลงมาอย่างน้อยเท่านี้
+# ค่าเหล่านี้เป็นค่าตั้งต้น ต้องปรับจากข้อมูลจริงหลังมี embedding model
+guess_min_similarity = 0.80
+guess_margin = 0.05
+# กล้องเดิมเห็นรถซ้ำภายในเวลานี้ (tracker หลุดแล้วจับใหม่) ถือว่าเป็นช่วงต่อเนื่องสำหรับการเดา
+same_camera_gap_seconds = 60
+# journey ที่ไม่มีใครเห็นนานเกินนี้ถูกปิด (รถจอดค้างคืนจะกลายเป็น journey ใหม่ตอนออก)
+journey_idle_hours = 24
+# รอให้ event ของกล้องอื่นที่เวลาใกล้กันมาถึงก่อนค่อยต่อ (ลดปัญหา event มาไม่เรียงลำดับ)
+settle_seconds = 5
+
+# role: entry (ทางเข้า), exit (ทางออก: ปิด journey), internal
+[cameras]
+"G-entry" = { role = "entry" }
+"G-exit" = { role = "exit" }
+"B1-ramp-up" = { role = "internal" }
+"L2-north" = { role = "internal" }
+
+# ทางที่รถวิ่งจาก a ไป b ได้โดยไม่ผ่านกล้องอื่น
+# min_seconds: เร็วที่สุดที่เป็นไปได้  max_seconds: ช้าที่สุดถ้าไม่หยุดจอด (ใช้กับการ "เดา" เท่านั้น)
+[[links]]
+a = "G-entry"
+b = "B1-ramp-up"
+min_seconds = 5
+max_seconds = 120
+
+[[links]]
+a = "B1-ramp-up"
+b = "L2-north"
+min_seconds = 10
+max_seconds = 180
+both_ways = true
+
+[[links]]
+a = "B1-ramp-up"
+b = "G-exit"
+min_seconds = 5
+max_seconds = 120

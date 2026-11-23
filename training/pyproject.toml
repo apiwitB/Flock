@@ -1,0 +1,33 @@
+[project]
+name = "flock-train"
+version = "0.1.0"
+description = "Dataset tools and training scripts for plate detection, plate OCR and province classification"
+requires-python = ">=3.11"
+# torch / torchvision ติดตั้งแยกตาม CUDA ของเครื่อง (ดู README) จึงไม่ใส่ไว้ที่นี่
+dependencies = [
+    "flock-contracts",
+    "numpy>=1.26",
+    "pillow>=10",
+    "opencv-python-headless>=4.9",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+gpu = [
+    "timm>=1.0",
+    "transformers>=4.45",
+    "torchmetrics>=1.4",
+    "pycocotools>=2.0.8",
+    "onnx>=1.16",
+]
+test = ["pytest>=8"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flock_train*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

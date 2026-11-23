@@ -1,0 +1,69 @@
+# Caddy หน้าเว็บของ Flock
+# - เสิร์ฟ React app จาก /srv (SPA: path ที่ไม่มีไฟล์จริงให้ตอบ index.html)
+# - reverse proxy เส้นทางของ API ไป api:8000
+#   Caddy ตั้ง X-Forwarded-For เป็น IP ของผู้ใช้เอง (ไม่เชื่อ header ที่ผู้ใช้ส่งมา เพราะไม่ได้ตั้ง trusted_proxies)
+#   และ api เชื่อ header นี้เฉพาะจาก IP ของ Caddy (ดู --forwarded-allow-ips ใน docker-compose.yml)
+#   audit_log.client_ip จึงเป็น IP ของผู้ใช้จริง
+{
+	# ตอนพัฒนา: HTTP ล้วน ไม่ออกใบรับรอง
+	auto_https off
+	admin off
+}
+
+# ===================================================================================
+# เครื่องจริง (HTTPS) ให้เปลี่ยนเป็นแบบนี้:
+#
+#   1) ลบ `auto_https off` ด้านบน แล้วเปลี่ยน site address จาก `:80` เป็นชื่อเครื่อง เช่น
+#
+#        flock.garage.local {
+#            # ใช้ CA ภายในของ Caddy (ต้องนำ root cert จาก /data/caddy/pki/authorities/local/root.crt
+#            # ไปติดตั้งในเครื่องผู้ใช้)
+#            tls internal
+#            # หรือใช้ใบรับรองที่องค์กรออกให้ (mount เข้า container แบบ read-only)
+#            # tls /etc/caddy/certs/flock.crt /etc/caddy/certs/flock.key
+#            import flock_site
+#        }
+#        http://flock.garage.local {
+#            redir https://{host}{uri} permanent
+#        }
+#
+#   2) docker-compose.yml: publish 443 (และ 80 สำหรับ redirect) แทน 127.0.0.1:8080:80
+#      ผูกกับ IP ของ LAN ที่ต้องการเท่านั้น
+#   3) docker-compose.yml: ลบ FLOCK_COOKIE_SECURE: "false" ของ api (ค่าเริ่มคือ true)
+#      ไม่อย่างนั้น session cookie จะไม่มี flag Secure
+#   4) docker-compose.yml: ลบการ publish 127.0.0.1:8000 ของ api ให้เข้าผ่าน Caddy อย่างเดียว
+#   5) พิจารณาเพิ่ม Strict-Transport-Security ใน security_headers ด้านล่าง
+#   6) พิจารณาตัด /docs และ /openapi.json ออก
+# ===================================================================================
+
+(security_headers) {
+	header {
+		Content-Security-Policy "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+(flock_site) {
+	import security_headers
+	encode zstd gzip
+
+	@api {
+		path /auth/* /search/* /sightings /sightings/* /journeys/* /cameras /cameras/* /docs /openapi.json
+	}
+	handle @api {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+:80 {
+	import flock_site
+}
