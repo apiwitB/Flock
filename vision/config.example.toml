@@ -1,0 +1,45 @@
+# ตั้งค่า vision worker: คัดลอกเป็น vision.toml แล้วแก้ตามเครื่องจริง
+
+# URL ของคิว อ่านจาก environment variable นี้ (มีรหัสผ่าน)
+queue_url_env = "FLOCK_QUEUE_URL"
+# ต้องเป็น volume เดียวกับที่ api อ่านภาพ
+image_root = "/data/images"
+
+[models]
+# ตัวตรวจรถ: weights COCO สำเร็จรูป (Apache-2.0) ไม่ต้องเทรน
+vehicle_detector = "PekingU/rtdetr_v2_r18vd"
+# ผลจาก training/ (ROADMAP A3) ถ้ายังไม่มี ให้ใส่เป็นคอมเมนต์ไว้ ระบบจะส่ง event ที่ไม่มีป้าย
+# plate_detector = "/models/det-v1/best"
+# plate_ocr = "/models/ocr-v1/plate_ocr.onnx"
+# province = "/models/province-v1/province.onnx"
+# ต้องเท่ากับ --text-split ตอนแปลงชุดข้อมูลด้วย cvat_convert
+text_split = 0.62
+
+# ค่าด้านล่างไม่ต้องใส่ก็ได้ (ใช้ค่าเริ่ม) ใส่เมื่อจูนกับกล้องจริง
+[tracker]
+max_lost_seconds = 2.0
+
+[bestshot]
+min_hits = 3
+emit_after_seconds = 8.0
+
+[pipeline]
+plate_min_width = 40.0
+
+# ชื่อกล้องต้องตรงกับ camera_id ในตาราง cameras และใน topology.toml
+[[cameras]]
+id = "G-entry"
+url_env = "FLOCK_CAM_G_ENTRY"    # rtsp://user:pass@ip/... เก็บใน environment ไม่เขียนลงไฟล์นี้
+fps = 5
+
+[[cameras]]
+id = "B1-ramp-up"
+url_env = "FLOCK_CAM_B1_RAMP_UP"
+fps = 5
+
+# เล่นคลิปที่บันทึกไว้แทนกล้องสด (ใช้ทดสอบ)
+# [[cameras]]
+# id = "G-entry"
+# url = "/clips/G-entry_20261123T080000.mp4"
+# live = false
+# fps = 5

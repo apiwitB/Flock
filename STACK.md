@@ -105,7 +105,7 @@ Reader ทุกตัวต้องทำตาม interface เดียว�
 flock/
   contracts/      # Sighting event schema + ตัวช่วยป้าย/จังหวัด (ใช้ร่วมกันทุกส่วน)
   training/       # ขั้นตอนและสคริปต์เทรน (รันบนเครื่อง GPU)
-  vision/         # ingest, detector, tracker, readers (plugin)
+  vision/         # รับภาพกล้อง, detector, tracker, readers, เลือกภาพดีที่สุด → event
   api/            # writer (คิว → DB), linker (ต่อเส้นทางข้ามกล้อง), Search API
   web/            # React
   deploy/         # docker-compose, schema ฐานข้อมูล, topology.toml (ผังกล้อง), Caddyfile, grafana dashboards

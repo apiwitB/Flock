@@ -1,0 +1,30 @@
+[project]
+name = "flock-vision"
+version = "0.1.0"
+description = "Reads camera streams, detects and tracks vehicles, reads plates, emits Sighting events"
+requires-python = ">=3.11"
+dependencies = [
+    "flock-contracts",
+    "numpy>=1.26",
+    "opencv-python-headless>=4.9",
+    "redis>=5.0",
+]
+
+[project.optional-dependencies]
+# บนเครื่อง GPU: ติดตั้ง torch รุ่น CUDA แยกก่อน (ดู training/README.md ขั้น 0)
+gpu = ["onnxruntime-gpu>=1.18", "transformers>=4.45", "timm>=1.0"]
+cpu = ["onnxruntime>=1.18"]
+test = ["pytest>=8"]
+
+[project.scripts]
+flock-vision = "flock_vision.main:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flock_vision*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
